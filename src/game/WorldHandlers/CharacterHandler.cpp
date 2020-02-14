@@ -151,9 +151,7 @@ void WorldSession::HandleCharEnum(QueryResult* result)
 
     ByteBuffer buffer;
 
-    data.WriteBits(0, 23);
-    data.WriteBit(1);
-    data.WriteBits(result ? result->GetRowCount() : 0, 17);
+    data.WriteBits(result ? result->GetRowCount() : 0, 16);
 
     if (result)
     {
@@ -168,7 +166,13 @@ void WorldSession::HandleCharEnum(QueryResult* result)
             }
         }
         while (result->NextRow());
+    }
 
+    data.WriteBit(1);
+    data.WriteBits(0, 21);
+
+    if (!buffer.empty())
+    {
         data.FlushBits();
         data.append(buffer);
     }
@@ -206,20 +210,20 @@ void WorldSession::HandleCharEnumOpcode(WorldPacket & /*recv_data*/)
                                   PET_SAVE_AS_CURRENT, GetAccountId());
 }
 
-void WorldSession::HandleCharCreateOpcode(WorldPacket& recv_data)
+void WorldSession::HandleCharCreateOpcode(WorldPacket& recvData)
 {
-    std::string name;
-    uint8 race_, class_;
-
-    recv_data >> name;
-
-    recv_data >> race_;
-    recv_data >> class_;
-
     // extract other data required for player creating
-    uint8 gender, skin, face, hairStyle, hairColor, facialHair, outfitId;
-    recv_data >> gender >> skin >> face;
-    recv_data >> hairStyle >> hairColor >> facialHair >> outfitId;
+    uint8 hairStyle, face, facialHair, hairColor, race_, class_, skin, gender, outfitId;
+
+    recvData >> outfitId >> hairStyle >> class_ >> skin;
+    recvData >> face >> race_ >> facialHair >> gender >> hairColor;
+
+    uint32 nameLength = recvData.ReadBits(6);
+    uint8 unk = recvData.ReadBit();
+    std::string name = recvData.ReadString(nameLength);
+
+    if (unk)
+        recvData.read_skip<uint32>();
 
     WorldPacket data(SMSG_CHAR_CREATE, 1);                  // returned with diff.values in all cases
 
@@ -257,23 +261,25 @@ void WorldSession::HandleCharCreateOpcode(WorldPacket& recv_data)
         return;
     }
 
+    // FIXME
     // prevent character creating Expansion race without Expansion account
-    if (raceEntry->expansion > Expansion())
-    {
-        data << (uint8)CHAR_CREATE_EXPANSION;
-        sLog.outError("Expansion %u account:[%d] tried to Create character with expansion %u race (%u)", Expansion(), GetAccountId(), raceEntry->expansion, race_);
-        SendPacket(&data);
-        return;
-    }
+    //if (raceEntry->expansion > Expansion())
+    //{
+    //    data << (uint8)CHAR_CREATE_EXPANSION;
+    //    sLog.outError("Expansion %u account:[%d] tried to Create character with expansion %u race (%u)", Expansion(), GetAccountId(), raceEntry->expansion, race_);
+    //    SendPacket(&data);
+    //    return;
+    //}
 
+    // FIXME
     // prevent character creating Expansion class without Expansion account
-    if (classEntry->expansion > Expansion())
-    {
-        data << (uint8)CHAR_CREATE_EXPANSION_CLASS;
-        sLog.outError("Expansion %u account:[%d] tried to Create character with expansion %u class (%u)", Expansion(), GetAccountId(), classEntry->expansion, class_);
-        SendPacket(&data);
-        return;
-    }
+    //if (classEntry->expansion > Expansion())
+    //{
+    //    data << (uint8)CHAR_CREATE_EXPANSION_CLASS;
+    //    sLog.outError("Expansion %u account:[%d] tried to Create character with expansion %u class (%u)", Expansion(), GetAccountId(), classEntry->expansion, class_);
+    //    SendPacket(&data);
+    //    return;
+    //}
 
     // prevent character creating with invalid name
     if (!normalizePlayerName(name))
@@ -560,10 +566,27 @@ void WorldSession::HandleCharCreateOpcode(WorldPacket& recv_data)
     delete pNewChar;                                        // created only to call SaveToDB()
 }
 
-void WorldSession::HandleCharDeleteOpcode(WorldPacket& recv_data)
+void WorldSession::HandleCharDeleteOpcode(WorldPacket& recvData)
 {
     ObjectGuid guid;
-    recv_data >> guid;
+
+    guid[1] = recvData.ReadBit();
+    guid[3] = recvData.ReadBit();
+    guid[2] = recvData.ReadBit();
+    guid[7] = recvData.ReadBit();
+    guid[4] = recvData.ReadBit();
+    guid[6] = recvData.ReadBit();
+    guid[0] = recvData.ReadBit();
+    guid[5] = recvData.ReadBit();
+
+    recvData.ReadByteSeq(guid[7]);
+    recvData.ReadByteSeq(guid[1]);
+    recvData.ReadByteSeq(guid[6]);
+    recvData.ReadByteSeq(guid[0]);
+    recvData.ReadByteSeq(guid[3]);
+    recvData.ReadByteSeq(guid[4]);
+    recvData.ReadByteSeq(guid[2]);
+    recvData.ReadByteSeq(guid[5]);
 
     // can't delete loaded character
     if (sObjectMgr.GetPlayer(guid))
@@ -633,8 +656,32 @@ void WorldSession::HandleCharDeleteOpcode(WorldPacket& recv_data)
     SendPacket(&data);
 }
 
-void WorldSession::HandlePlayerLoginOpcode(WorldPacket& recv_data)
+void WorldSession::HandlePlayerLoginOpcode(WorldPacket& recvData)
 {
+    ObjectGuid playerGuid;
+    float unk = 0;
+
+    recvData >> unk;
+
+    playerGuid[1] = recvData.ReadBit();
+    playerGuid[4] = recvData.ReadBit();
+    playerGuid[7] = recvData.ReadBit();
+    playerGuid[3] = recvData.ReadBit();
+    playerGuid[2] = recvData.ReadBit();
+    playerGuid[6] = recvData.ReadBit();
+    playerGuid[5] = recvData.ReadBit();
+    playerGuid[0] = recvData.ReadBit();
+
+    recvData.ReadByteSeq(playerGuid[5]);
+    recvData.ReadByteSeq(playerGuid[1]);
+    recvData.ReadByteSeq(playerGuid[0]);
+    recvData.ReadByteSeq(playerGuid[6]);
+    recvData.ReadByteSeq(playerGuid[2]);
+    recvData.ReadByteSeq(playerGuid[4]);
+    recvData.ReadByteSeq(playerGuid[7]);
+    recvData.ReadByteSeq(playerGuid[3]);
+
+    DEBUG_LOG("WORLD: Received opcode Player Logon Message from %s, unk float: %f", playerGuid.GetString().c_str(), unk);
     if (PlayerLoading() || GetPlayer() != NULL)
     {
         sLog.outError("Player tryes to login again, AccountId = %d", GetAccountId());
@@ -642,13 +689,6 @@ void WorldSession::HandlePlayerLoginOpcode(WorldPacket& recv_data)
     }
 
     m_playerLoading = true;
-
-    ObjectGuid playerGuid;
-
-    recv_data.ReadGuidMask<2, 3, 0, 6, 4, 5, 1, 7>(playerGuid);
-    recv_data.ReadGuidBytes<2, 7, 0, 3, 5, 6, 1, 4>(playerGuid);
-
-    DEBUG_LOG("WORLD: Received opcode Player Logon Message from %s", playerGuid.GetString().c_str());
 
     LoginQueryHolder* holder = new LoginQueryHolder(GetAccountId(), playerGuid);
     if (!holder->Initialize())
@@ -695,21 +735,20 @@ void WorldSession::HandlePlayerLogin(LoginQueryHolder* holder)
     SendAccountDataTimes(PER_CHARACTER_CACHE_MASK);
 
     data.Initialize(SMSG_FEATURE_SYSTEM_STATUS, 34);        // added in 2.2.0
-    data << uint8(2);                                       // status
     data << uint32(1);                                      // Scrolls of Ressurection?
     data << uint32(1);
     data << uint32(2);
     data << uint32(0);
-    data.WriteBit(true);
-    data.WriteBit(true);
+    data << uint8(2);                                       // complain system status
     data.WriteBit(false);
+    data.WriteBit(false);                                   // session time alert
     data.WriteBit(true);
-    data.WriteBit(false);
-    data.WriteBit(false);                                   // enable(1)/disable(0) voice chat interface in client
+    data.WriteBit(false);                                   // enable(1)/disable(0) voice chat interface in client ?
+    data.WriteBit(true);                                    // quick ticket?
+    data << uint32(60);
+    data << uint32(10);
     data << uint32(1);
     data << uint32(0);
-    data << uint32(10);
-    data << uint32(60);
     SendPacket(&data);
 
     // Send MOTD
@@ -1126,6 +1165,7 @@ void WorldSession::HandleSetPlayerDeclinedNamesOpcode(WorldPacket& recv_data)
     {
         WorldPacket data(SMSG_SET_PLAYER_DECLINED_NAMES_RESULT, 4 + 8);
         data << uint32(1);
+        data << ObjectGuid(guid);
         SendPacket(&data);
         return;
     }
@@ -1135,6 +1175,7 @@ void WorldSession::HandleSetPlayerDeclinedNamesOpcode(WorldPacket& recv_data)
     {
         WorldPacket data(SMSG_SET_PLAYER_DECLINED_NAMES_RESULT, 4 + 8);
         data << uint32(1);
+        data << ObjectGuid(guid);
         SendPacket(&data);
         return;
     }
@@ -1143,6 +1184,7 @@ void WorldSession::HandleSetPlayerDeclinedNamesOpcode(WorldPacket& recv_data)
     {
         WorldPacket data(SMSG_SET_PLAYER_DECLINED_NAMES_RESULT, 4 + 8);
         data << uint32(1);
+        data << ObjectGuid(guid);
         SendPacket(&data);
         return;
     }
@@ -1156,6 +1198,7 @@ void WorldSession::HandleSetPlayerDeclinedNamesOpcode(WorldPacket& recv_data)
     {
         WorldPacket data(SMSG_SET_PLAYER_DECLINED_NAMES_RESULT, 4 + 8);
         data << uint32(1);
+        data << ObjectGuid(guid);
         SendPacket(&data);
         return;
     }
@@ -1167,6 +1210,7 @@ void WorldSession::HandleSetPlayerDeclinedNamesOpcode(WorldPacket& recv_data)
         {
             WorldPacket data(SMSG_SET_PLAYER_DECLINED_NAMES_RESULT, 4 + 8);
             data << uint32(1);
+            data << ObjectGuid(guid);
             SendPacket(&data);
             return;
         }
@@ -1176,6 +1220,7 @@ void WorldSession::HandleSetPlayerDeclinedNamesOpcode(WorldPacket& recv_data)
     {
         WorldPacket data(SMSG_SET_PLAYER_DECLINED_NAMES_RESULT, 4 + 8);
         data << uint32(1);
+        data << ObjectGuid(guid);
         SendPacket(&data);
         return;
     }
@@ -1193,6 +1238,7 @@ void WorldSession::HandleSetPlayerDeclinedNamesOpcode(WorldPacket& recv_data)
 
     WorldPacket data(SMSG_SET_PLAYER_DECLINED_NAMES_RESULT, 4 + 8);
     data << uint32(0);                                      // OK
+    data << ObjectGuid(guid);
     SendPacket(&data);
 }
 

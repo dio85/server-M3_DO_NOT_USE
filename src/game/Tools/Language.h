@@ -1025,6 +1025,14 @@ enum MangosStrings
     LANG_VENDOR_WRONG_ITEM_TYPE         = 1700,
     LANG_VENDOR_WRONG_CURRENCY_MAXCOUNT = 1701,
 
+    LANG_PHASING_REPORT_STATUS          = 1702,
+    LANG_PHASING_NO_DEFINITIONS         = 1703,
+    LANG_PHASING_SUCCESS                = 1704,
+    LANG_PHASING_FAILED                 = 1705,
+    LANG_PHASING_LAST_PHASE             = 1706,
+    LANG_PHASING_LIST                   = 1707,
+    LANG_PHASING_PHASEMASK              = 1708,
+
     // FREE IDS                           1801-9999
     LANG_AUTOBROADCAST                  = 1800
 

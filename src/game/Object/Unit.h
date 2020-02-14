@@ -393,6 +393,7 @@ enum UnitMods
     UNIT_MOD_ECLIPSE,
     UNIT_MOD_HOLY_POWER,
     UNIT_MOD_ALTERNATIVE,
+    UNIT_MOD_CHI,
     UNIT_MOD_ARMOR,                                         // UNIT_MOD_ARMOR..UNIT_MOD_RESISTANCE_ARCANE must be in existing order, it's accessed by index values of SpellSchools enum.
     UNIT_MOD_RESISTANCE_HOLY,
     UNIT_MOD_RESISTANCE_FIRE,
@@ -412,8 +413,11 @@ enum UnitMods
     UNIT_MOD_RESISTANCE_START = UNIT_MOD_ARMOR,
     UNIT_MOD_RESISTANCE_END = UNIT_MOD_RESISTANCE_ARCANE + 1,
     UNIT_MOD_POWER_START = UNIT_MOD_MANA,
-    UNIT_MOD_POWER_END = UNIT_MOD_ALTERNATIVE + 1
+    UNIT_MOD_POWER_END = UNIT_MOD_CHI + 1
 };
+
+//COMPILE_ASSERT(UNIT_MOD_POWER_END - UNIT_MOD_POWER_START == MAX_POWERS, "Power-related UnitMods are not updated.");
+
 
 enum BaseModGroup
 {
@@ -667,7 +671,11 @@ enum NPCFlags
     UNIT_NPC_FLAG_GUILD_BANKER          = 0x00800000,       // cause client to send 997 opcode
     UNIT_NPC_FLAG_SPELLCLICK            = 0x01000000,       // cause client to send 1015 opcode (spell click), dynamic, set at loading and don't must be set in DB
     UNIT_NPC_FLAG_PLAYER_VEHICLE        = 0x02000000,       // players with mounts that have vehicle data should have it set
+    UNIT_NPC_FLAG_MAILOBJECT            = 0x04000000,       // Not sure what this is, Argent Squire maybe - Allows remote access to mail
     UNIT_NPC_FLAG_REFORGER              = 0x08000000,       // reforging
+    UNIT_NPC_FLAG_TRANSMOGRIFIER        = 0x10000000,       // Transmogrifier Vendor
+    UNIT_NPC_FLAG_VOIDSTORAGEBANKER     = 0x20000000,		// Void Storage Vendor
+    UNIT_NPC_FLAG_PETBATTLEPVE          = 0x40000000,		// Pet Battle Trainer
 };
 
 // used in most movement packets (send and received), 30 bits in client
@@ -718,7 +726,7 @@ MovementFlags const movementOrTurningFlagsMask = MovementFlags(
             movementFlagsMask | MOVEFLAG_TURN_LEFT | MOVEFLAG_TURN_RIGHT
         );
 
-// 12 bits in client
+// 13 bits in client
 enum MovementFlags2
 {
     MOVEFLAG2_NONE              = 0x0000,
@@ -734,6 +742,7 @@ enum MovementFlags2
     MOVEFLAG2_INTERP_MOVEMENT   = 0x0200,
     MOVEFLAG2_INTERP_TURNING    = 0x0400,
     MOVEFLAG2_INTERP_PITCHING   = 0x0800,
+    MOVEFLAG2_UNK_13            = 0x1000,
     MOVEFLAG2_INTERP_MASK       = MOVEFLAG2_INTERP_MOVEMENT | MOVEFLAG2_INTERP_TURNING | MOVEFLAG2_INTERP_PITCHING
 };
 
@@ -804,7 +813,9 @@ class MovementInfo
         {
             StatusInfo() : hasFallData(false), hasFallDirection(false), hasOrientation(false),
                 hasPitch(false), hasSpline(false), hasSplineElevation(false),
-                hasTimeStamp(false), hasTransportTime2(false), hasTransportTime3(false) { }
+                hasTimeStamp(false), hasTransportTime2(false), hasTransportTime3(false),
+                unkBit2(false), hasUnkInt32(false) { }
+
             bool hasFallData        : 1;
             bool hasFallDirection   : 1;
             bool hasOrientation     : 1;
@@ -814,6 +825,8 @@ class MovementInfo
             bool hasTimeStamp       : 1;
             bool hasTransportTime2  : 1;
             bool hasTransportTime3  : 1;
+            bool unkBit2            : 1;
+            bool hasUnkInt32        : 1;
         };
 
         JumpInfo const& GetJumpInfo() const { return jump; }
@@ -843,6 +856,10 @@ class MovementInfo
         JumpInfo jump;
         // spline
         float    splineElevation;
+        // unknown array
+        std::list<uint32> unkArray;
+        // unknown int32
+        int32 unkInt32;
         // status info
         StatusInfo si;
         int8 byteParam;

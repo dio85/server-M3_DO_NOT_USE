@@ -47,6 +47,7 @@
 #include <map>
 #include <limits>
 
+struct PlayerLevelInfo;
 class Group;
 class ArenaTeam;
 class Item;
@@ -466,6 +467,7 @@ enum ConditionSource                                        // From where was th
     CONDITION_FROM_SPELL_AREA       = 7,                    // Used to check a condition from spell_area table
     CONDITION_FROM_SPELLCLICK       = 8,                    // Used to check a condition from npc_spellclick_spells table
     CONDITION_FROM_DBSCRIPTS        = 9,                    // Used to check a condition from DB Scripts Engine
+    CONDITION_FROM_PHASEMGR         = 10,                   // Used to check a condition from phase manager
 };
 
 class PlayerCondition

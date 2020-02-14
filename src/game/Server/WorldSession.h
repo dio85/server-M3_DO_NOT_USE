@@ -145,26 +145,44 @@ enum PartyResult
     ERR_PARTY_LFG_TELEPORT_IN_COMBAT    = 30
 };
 
-/*
- * these have been moved to LFGMgr.h for dev21
- * delete from here once all is good with the move
-enum LfgUpdateType
-{
-    LFG_UPDATE_JOIN     = 5,
-    LFG_UPDATE_LEAVE    = 7,
-};
-
-enum LfgType
-{
-    LFG_TYPE_NONE                 = 0,
-    LFG_TYPE_DUNGEON              = 1,
-    LFG_TYPE_RAID                 = 2,
-    LFG_TYPE_QUEST                = 3,
-    LFG_TYPE_ZONE                 = 4,
-    LFG_TYPE_HEROIC_DUNGEON       = 5,
-    LFG_TYPE_RANDOM_DUNGEON       = 6
-};
-*/
+//enum LfgJoinResult
+//{
+//    ERR_LFG_OK                                  = 0x00,
+//    ERR_LFG_ROLE_CHECK_FAILED                   = 0x01,
+//    ERR_LFG_GROUP_FULL                          = 0x02,
+//    ERR_LFG_NO_LFG_OBJECT                       = 0x04,
+//    ERR_LFG_NO_SLOTS_PLAYER                     = 0x05,
+//    ERR_LFG_NO_SLOTS_PARTY                      = 0x06,
+//    ERR_LFG_MISMATCHED_SLOTS                    = 0x07,
+//    ERR_LFG_PARTY_PLAYERS_FROM_DIFFERENT_REALMS = 0x08,
+//    ERR_LFG_MEMBERS_NOT_PRESENT                 = 0x09,
+//    ERR_LFG_GET_INFO_TIMEOUT                    = 0x0A,
+//    ERR_LFG_INVALID_SLOT                        = 0x0B,
+//    ERR_LFG_DESERTER_PLAYER                     = 0x0C,
+//    ERR_LFG_DESERTER_PARTY                      = 0x0D,
+//    ERR_LFG_RANDOM_COOLDOWN_PLAYER              = 0x0E,
+//    ERR_LFG_RANDOM_COOLDOWN_PARTY               = 0x0F,
+//    ERR_LFG_TOO_MANY_MEMBERS                    = 0x10,
+//    ERR_LFG_CANT_USE_DUNGEONS                   = 0x11,
+//    ERR_LFG_ROLE_CHECK_FAILED2                  = 0x12,
+//};
+//
+//enum LfgUpdateType
+//{
+//    LFG_UPDATE_JOIN     = 5,
+//    LFG_UPDATE_LEAVE    = 7,
+//};
+//
+//enum LfgType
+//{
+//    LFG_TYPE_NONE                 = 0,
+//    LFG_TYPE_DUNGEON              = 1,
+//    LFG_TYPE_RAID                 = 2,
+//    LFG_TYPE_QUEST                = 3,
+//    LFG_TYPE_ZONE                 = 4,
+//    LFG_TYPE_HEROIC_DUNGEON       = 5,
+//    LFG_TYPE_RANDOM_DUNGEON       = 6
+//};
 
 enum ChatRestrictionType
 {
@@ -279,7 +297,7 @@ class WorldSession
         void SendGroupInvite(Player* player, bool alreadyInGroup = false);
         void SendAreaTriggerMessage(const char* Text, ...) ATTR_PRINTF(2, 3);
         void SendTransferAborted(uint32 mapid, uint8 reason, uint8 arg = 0);
-        void SendSetPhaseShift(uint32 phaseMask, uint16 mapId = 0);
+        void SendSetPhaseShift(std::set<uint32> const& phaseIds, std::set<uint32> const& terrainswaps);
         void SendQueryTimeResponse();
         void SendRedirectClient(std::string& ip, uint16 port);
 
@@ -348,7 +366,9 @@ class WorldSession
 
         void SendNameQueryOpcode(Player* p);
         void SendNameQueryOpcodeFromDB(ObjectGuid guid);
+        void HandleRealmQueryOpcode(WorldPacket& recv_data);
         static void SendNameQueryOpcodeFromDBCallBack(QueryResult* result, uint32 accountId);
+        void SendAuthResponse(uint8 code, bool queued, uint32 queuePos = 0);
 
         void SendTrainerList(ObjectGuid guid);
         void SendTrainerList(ObjectGuid guid, const std::string& strTitle);

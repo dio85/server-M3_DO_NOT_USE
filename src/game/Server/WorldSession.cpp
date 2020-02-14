@@ -176,10 +176,11 @@ void WorldSession::SendPacket(WorldPacket const* packet)
 
     if (!m_Socket)
     {
+        sLog.outError("Can't send %u (%s), socket is NULL", packet->GetOpcode(), packet->GetOpcodeName());
         return;
     }
 
-    if (opcodeTable[packet->GetOpcode()].status == STATUS_UNHANDLED)
+    if (packet->GetOpcode() != MSG_WOW_CONNECTION && (packet->GetOpcode() >= MAX_OPCODE_TABLE_SIZE || opcodeTable[packet->GetOpcode()].status == STATUS_UNHANDLED))
     {
         sLog.outError("SESSION: tried to send an unhandled opcode 0x%.4X", packet->GetOpcode());
         return;
@@ -223,6 +224,7 @@ void WorldSession::SendPacket(WorldPacket const* packet)
 
 #endif                                                  // !MANGOS_DEBUG
 
+    sLog.outDebug("Send packet %u %s to %s", packet->GetOpcode(), LookupOpcodeName(packet->GetOpcode()), GetPlayer() ? GetPlayer()->GetGuidStr().c_str() : "<unknown>");
     if (m_Socket->SendPacket(*packet) == -1)
     {
         m_Socket->CloseSocket();
@@ -266,6 +268,8 @@ bool WorldSession::Update(PacketFilter& updater)
                         packet->GetOpcodeName(),
                         packet->GetOpcode());
         #endif*/
+
+        DEBUG_LOG("Received packet %u %s from %s", packet->GetOpcode(), LookupOpcodeName(packet->GetOpcode()), GetPlayer() ? GetPlayer()->GetGuidStr().c_str() : "<unknown>");
 
         OpcodeHandler const& opHandle = opcodeTable[packet->GetOpcode()];
         try
@@ -720,45 +724,38 @@ void WorldSession::SendNotification(int32 string_id, ...)
     }
 }
 
-void WorldSession::SendSetPhaseShift(uint32 phaseMask, uint16 mapId)
+void WorldSession::SendSetPhaseShift(std::set<uint32> const& phaseIds, std::set<uint32> const& terrainswaps)
 {
+    if (PlayerLoading())
+        return;
+
     ObjectGuid guid = _player->GetObjectGuid();
 
-    uint32 phaseFlags = 0;
-
-    for (uint32 i = 0; i < sPhaseStore.GetNumRows(); i++)
-    {
-        if (PhaseEntry const* phase = sPhaseStore.LookupEntry(i))
-        {
-            if (phase->PhaseShift == phaseMask)
-            {
-                phaseFlags = phase->Flags;
-                break;
-            }
-        }
-    }
-
-    WorldPacket data(SMSG_SET_PHASE_SHIFT, 30);
+    WorldPacket data(SMSG_SET_PHASE_SHIFT, 1 + 8 + 4 + 4 + 4 + 4 + 2 * phaseIds.size() + 4 + terrainswaps.size() * 2);
     data.WriteGuidMask<2, 3, 1, 6, 4, 5, 0, 7>(guid);
     data.WriteGuidBytes<7, 4>(guid);
 
-    data << uint32(0);                  // number of WorldMapArea.dbc entries to control world map shift * 2
+    data << uint32(0);
+    //for (uint8 i = 0; i < worldMapAreaCount; ++i)
+    //    data << uint16(0);                    // WorldMapArea.dbc id (controls map display)
 
     data.WriteGuidBytes<1>(guid);
-    data << uint32(phaseMask ? phaseFlags : 8);
+    data << uint32(phaseIds.size() ? 0 : 8);  // flags (not phasemask)
     data.WriteGuidBytes<2, 6>(guid);
 
-    data << uint32(0);                  // number of inactive terrain swaps * 2
+    data << uint32(0);                          // Inactive terrain swaps
+    //for (uint8 i = 0; i < inactiveSwapsCount; ++i)
+    //    data << uint16(0);
 
-    data << uint32(phaseMask ? 2 : 0);  // WRONG: number of Phase.dbc ids * 2
-    if (phaseMask)
-        data << uint16(phaseMask);
+    data << uint32(phaseIds.size() * 2);        // Phase.dbc ids
+    for (std::set<uint32>::const_iterator itr = phaseIds.begin(); itr != phaseIds.end(); ++itr)
+        data << uint16(*itr);
 
     data.WriteGuidBytes<3, 0>(guid);
 
-    data << uint32(mapId ? 2 : 0);      // number of terrains swaps * 2
-    if (mapId)
-        data << uint16(mapId);
+    data << uint32(terrainswaps.size() * 2);    // Active terrain swaps
+    for (std::set<uint32>::const_iterator itr = terrainswaps.begin(); itr != terrainswaps.end(); ++itr)
+        data << uint16(*itr);
 
     data.WriteGuidBytes<5>(guid);
     SendPacket(&data);
@@ -846,22 +843,116 @@ void WorldSession::SendAuthWaitQue(uint32 position)
 {
     if (position == 0)
     {
-        WorldPacket packet( SMSG_AUTH_RESPONSE, 2 );
+        WorldPacket packet(SMSG_AUTH_RESPONSE, 1);
         packet.WriteBit(false);
         packet.WriteBit(false);
-        packet << uint8( AUTH_OK );
+        packet << uint8(AUTH_OK);
         SendPacket(&packet);
     }
     else
     {
-        WorldPacket packet( SMSG_AUTH_RESPONSE, 1+4+1 );
-        packet.WriteBit(true);      // has queue
-        packet.WriteBit(false);     // unk queue-related
-        packet.WriteBit(false);     // has account info
+        WorldPacket packet(SMSG_AUTH_RESPONSE, 6);
+        packet.WriteBit(false);
+        packet.WriteBit(true);
+        packet.WriteBit(false);
         packet << uint8(AUTH_WAIT_QUEUE);
         packet << uint32(position);
         SendPacket(&packet);
     }
+}
+
+struct ExpansionInfoStrunct
+{
+    uint8 raceOrClass;
+    uint8 expansion;
+};
+
+ExpansionInfoStrunct classExpansionInfo[MAX_CLASSES - 1] =
+{
+    { 1, 0 },
+    { 2, 0 },
+    { 3, 0 },
+    { 4, 0 },
+    { 5, 0 },
+    { 6, 2 },
+    { 7, 0 },
+    { 8, 0 },
+    { 9, 0 },
+    { 10, 4 },
+    { 11, 0 }
+};
+
+ExpansionInfoStrunct raceExpansionInfo[MAX_PLAYABLE_RACES] =
+{
+    { 1, 0 },
+    { 2, 0 },
+    { 3, 0 },
+    { 4, 0 },
+    { 5, 0 },
+    { 6, 0 },
+    { 7, 0 },
+    { 8, 0 },
+    { 9, 3 },
+    { 10, 1 },
+    { 11, 1 },
+    { 22, 3 },
+    { 24, 4 },
+    { 25, 4 },
+    { 26, 4 }
+};
+
+void WorldSession::SendAuthResponse(uint8 code, bool queued, uint32 queuePos)
+{
+    bool hasAccountData = true;
+
+    WorldPacket packet(SMSG_AUTH_RESPONSE, 80);
+
+    packet.WriteBit(hasAccountData);
+
+    if (hasAccountData)
+    {
+        packet.WriteBits(MAX_CLASSES - 1, 23);
+        packet.WriteBits(0, 21);
+        packet.WriteBit(0);
+        packet.WriteBit(0);
+        packet.WriteBit(0);
+        packet.WriteBit(0);
+        packet.WriteBits(MAX_PLAYABLE_RACES, 23);
+        packet.WriteBit(0);
+
+        packet.WriteBit(queued);
+
+        if (queued)
+            packet.WriteBit(1);
+
+        if (queued)
+            packet << uint32(queuePos);
+
+        for (uint8 i = 0; i < MAX_PLAYABLE_RACES; ++i)
+        {
+            packet << uint8(raceExpansionInfo[i].expansion);
+            packet << uint8(raceExpansionInfo[i].raceOrClass);
+        }
+
+        for (uint8 i = 0; i < MAX_CLASSES - 1; ++i)
+        {
+            packet << uint8(classExpansionInfo[i].raceOrClass);
+            packet << uint8(classExpansionInfo[i].expansion);
+        }
+
+        packet << uint32(0);
+        packet << uint8(Expansion());
+        packet << uint32(Expansion());
+        packet << uint32(0);
+        packet << uint8(Expansion());
+        packet << uint32(0);
+        packet << uint32(0);
+        packet << uint32(0);
+    }
+
+    packet << uint8(code);
+
+    SendPacket(&packet);
 }
 
 void WorldSession::LoadGlobalAccountData()
@@ -957,13 +1048,15 @@ void WorldSession::SetAccountData(AccountDataType type, time_t time_, const std:
 
 void WorldSession::SendAccountDataTimes(uint32 mask)
 {
-    WorldPacket data(SMSG_ACCOUNT_DATA_TIMES, 4 + 1 + 4 + 8 * 4); // changed in WotLK
-    data << uint32(time(NULL));                             // unix time of something
-    data << uint8(1);
+    WorldPacket data(SMSG_ACCOUNT_DATA_TIMES, 4 + 1 + 4 + NUM_ACCOUNT_DATA_TYPES * 4);
     data << uint32(mask);                                   // type mask
+    data << uint32(time(NULL));                             // unix time of something
+
     for (uint32 i = 0; i < NUM_ACCOUNT_DATA_TYPES; ++i)
-        if (mask & (1 << i))
-            data << uint32(GetAccountData(AccountDataType(i))->Time);// also unix time
+        data << uint32(GetAccountData(AccountDataType(i))->Time);// also unix time
+
+    data.WriteBit(1);
+
     SendPacket(&data);
 }
 
@@ -1151,48 +1244,69 @@ void WorldSession::SendAddonsInfo()
     };
 
     WorldPacket data(SMSG_ADDON_INFO, 4);
+    data.WriteBits(0, 18);                      // banned count
+    data.WriteBits(m_addonsList.size(), 23);    // addons count
 
+    ByteBuffer buffer;
     for (AddonsList::iterator itr = m_addonsList.begin(); itr != m_addonsList.end(); ++itr)
     {
+        bool bit0 = true;
+        bool bit1 = false;
+        bool bit2 = false;
+        data.WriteBit(bit0);                                //data.WriteBit(itr->CRC != 0x4c1c776d);
+        data.WriteBit(bit1);                                // non-standard CRC
+        data.WriteBit(bit2);
+        if (bit2)
+        {
+            data.WriteBits(0, 8);                           // string length
+            //buffer.WriteStringData(..);                   // use <Addon>\<Addon>.url file or not
+        }
+        if (bit1)
+        {
+            // append CRC
+        }
+        if (bit0)
+        {
+            buffer << uint8(0);
+            buffer << uint32(0);
+        }
+
         uint8 state = 2;                                    // 2 is sent here
-        data << uint8(state);
-
-        uint8 unk1 = 1;                                     // 1 is sent here
-        data << uint8(unk1);
-        if (unk1)
-        {
-            uint8 unk2 = (itr->CRC != 0x4c1c776d);          // If addon is Standard addon CRC
-            data << uint8(unk2);                            // if 1, than add addon public signature
-            if (unk2)                                       // if CRC is wrong, add public key (client need it)
-                data.append(tdata, sizeof(tdata));
-
-            data << uint32(0);
-        }
-
-        uint8 unk3 = 0;                                     // 0 is sent here
-        data << uint8(unk3);                                // use <Addon>\<Addon>.url file or not
-        if (unk3)
-        {
-            // String, 256 (null terminated?)
-            data << uint8(0);
-        }
+        buffer << uint8(state);
     }
+
+    /*if (bannedAddons)
+    {
+        foreach(bannedAddon)
+        {
+            for (int i = 0; i < 4; ++i)
+            {
+                buffer << uint32(0);
+                buffer << uint32(0);
+            }
+
+            buffer << uint32(0);
+            buffer << uint32(0);
+            buffer << uint32(0);
+        }
+    }*/
+
+    data.FlushBits();
+    if (!buffer.empty())
+        data.append(buffer);
 
     m_addonsList.clear();
 
-    uint32 count = 0;
-    data << uint32(count);                                  // BannedAddons count
-    /*for(uint32 i = 0; i < count; ++i)
-    {
-        uint32
-        string (16 bytes)
-        string (16 bytes)
-        uint32
-        uint32
-        uint32
-    }*/
-
     SendPacket(&data);
+}
+
+void WorldSession::SetPlayer(Player* plr)
+{
+    _player = plr;
+
+    // set m_GUID that can be used while player loggined and later until m_playerRecentlyLogout not reset
+    if (_player)
+        m_GUIDLow = _player->GetGUIDLow();
 }
 
 void WorldSession::SendRedirectClient(std::string& ip, uint16 port)

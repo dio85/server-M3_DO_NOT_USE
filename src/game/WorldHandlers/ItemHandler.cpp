@@ -254,9 +254,11 @@ void WorldSession::HandleAutoEquipItemOpcode(WorldPacket& recv_data)
 void WorldSession::HandleDestroyItemOpcode(WorldPacket& recv_data)
 {
     // DEBUG_LOG("WORLD: CMSG_DESTROYITEM");
-    uint8 bag, slot, count, data1, data2, data3;
+    uint32 count;
+	int8 bag, slot;
 
-    recv_data >> bag >> slot >> count >> data1 >> data2 >> data3;
+    recv_data >> count;
+	recv_data >> bag >> slot;
     // DEBUG_LOG("STORAGE: receive bag = %u, slot = %u, count = %u", bag, slot, count);
 
     uint16 pos = (bag << 8) | slot;
@@ -365,6 +367,10 @@ void WorldSession::HandleSellItemOpcode(WorldPacket& recv_data)
         return;
     }
 
+    // remove fake death
+    if (GetPlayer()->hasUnitState(UNIT_STAT_DIED))
+        GetPlayer()->RemoveSpellsCausingAura(SPELL_AURA_FEIGN_DEATH);
+
     Item* pItem = _player->GetItemByGuid(itemGuid);
     if (pItem)
     {
@@ -451,13 +457,31 @@ void WorldSession::HandleSellItemOpcode(WorldPacket& recv_data)
     return;
 }
 
-void WorldSession::HandleBuybackItem(WorldPacket& recv_data)
+void WorldSession::HandleBuybackItem(WorldPacket& recvData)
 {
     DEBUG_LOG("WORLD: Received opcode CMSG_BUYBACK_ITEM");
     ObjectGuid vendorGuid;
     uint32 slot;
 
-    recv_data >> vendorGuid >> slot;
+    recvData >> slot;
+
+    vendorGuid[3] = recvData.ReadBit();
+    vendorGuid[5] = recvData.ReadBit();
+    vendorGuid[0] = recvData.ReadBit();
+    vendorGuid[7] = recvData.ReadBit();
+    vendorGuid[2] = recvData.ReadBit();
+    vendorGuid[6] = recvData.ReadBit();
+    vendorGuid[1] = recvData.ReadBit();
+    vendorGuid[4] = recvData.ReadBit();
+
+    recvData.ReadByteSeq(vendorGuid[1]);
+    recvData.ReadByteSeq(vendorGuid[7]);
+    recvData.ReadByteSeq(vendorGuid[6]);
+    recvData.ReadByteSeq(vendorGuid[0]);
+    recvData.ReadByteSeq(vendorGuid[5]);
+    recvData.ReadByteSeq(vendorGuid[3]);
+    recvData.ReadByteSeq(vendorGuid[4]);
+    recvData.ReadByteSeq(vendorGuid[2]);
 
     Creature* pCreature = GetPlayer()->GetNPCIfCanInteractWith(vendorGuid, UNIT_NPC_FLAG_VENDOR);
     if (!pCreature)
@@ -466,6 +490,10 @@ void WorldSession::HandleBuybackItem(WorldPacket& recv_data)
         _player->SendSellError(SELL_ERR_CANT_FIND_VENDOR, NULL, ObjectGuid(), 0);
         return;
     }
+
+    // remove fake death
+    if (GetPlayer()->hasUnitState(UNIT_STAT_DIED))
+        GetPlayer()->RemoveSpellsCausingAura(SPELL_AURA_FEIGN_DEATH);
 
     Item* pItem = _player->GetItemFromBuyBackSlot(slot);
     if (pItem)
@@ -495,13 +523,50 @@ void WorldSession::HandleBuybackItem(WorldPacket& recv_data)
         _player->SendBuyError(BUY_ERR_CANT_FIND_ITEM, pCreature, 0, 0);
 }
 
-void WorldSession::HandleBuyItemOpcode(WorldPacket& recv_data)
+void WorldSession::HandleBuyItemOpcode(WorldPacket& recvData)
 {
     ObjectGuid vendorGuid, bagGuid;
-    uint32 item, slot, count;
-    uint8 type, bagSlot;
+    uint32 item, slot, count, bagSlot;
+    uint8 type;
 
-    recv_data >> vendorGuid >> type >> item >> slot >> count >> bagGuid >> bagSlot;
+    recvData >> bagSlot >> item >> count >> slot;
+
+    bagGuid[2] = recvData.ReadBit();
+    vendorGuid[0] = recvData.ReadBit();
+    bagGuid[5] = recvData.ReadBit();
+    vendorGuid[7] = recvData.ReadBit();
+    bagGuid[0] = recvData.ReadBit();
+    type = recvData.ReadBits(2);
+    bagGuid[6] = recvData.ReadBit();
+    bagGuid[4] = recvData.ReadBit();
+    vendorGuid[2] = recvData.ReadBit();
+    vendorGuid[1] = recvData.ReadBit();
+    bagGuid[3] = recvData.ReadBit();
+    vendorGuid[5] = recvData.ReadBit();
+    bagGuid[7] = recvData.ReadBit();
+    vendorGuid[4] = recvData.ReadBit();
+    bagGuid[1] = recvData.ReadBit();
+    vendorGuid[3] = recvData.ReadBit();
+    vendorGuid[6] = recvData.ReadBit();
+    recvData.FlushBits();
+
+    recvData.ReadByteSeq(bagGuid[1]);
+    recvData.ReadByteSeq(bagGuid[3]);
+    recvData.ReadByteSeq(vendorGuid[2]);
+    recvData.ReadByteSeq(vendorGuid[0]);
+    recvData.ReadByteSeq(bagGuid[2]);
+    recvData.ReadByteSeq(vendorGuid[4]);
+    recvData.ReadByteSeq(vendorGuid[3]);
+    recvData.ReadByteSeq(vendorGuid[1]);
+    recvData.ReadByteSeq(bagGuid[6]);
+    recvData.ReadByteSeq(vendorGuid[6]);
+    recvData.ReadByteSeq(vendorGuid[5]);
+    recvData.ReadByteSeq(bagGuid[5]);
+    recvData.ReadByteSeq(bagGuid[7]);
+    recvData.ReadByteSeq(bagGuid[4]);
+    recvData.ReadByteSeq(bagGuid[0]);
+    recvData.ReadByteSeq(vendorGuid[7]);
+
     DEBUG_LOG("WORLD: Received opcode CMSG_BUY_ITEM, vendorguid: %s, type: %u, item: %u, slot: %u, count: %u, bagGuid: %s, bagSlog: %u",
         vendorGuid.GetString().c_str(), type, item, slot, count, bagGuid.GetString().c_str(), bagSlot);
 
@@ -548,12 +613,27 @@ void WorldSession::HandleBuyItemOpcode(WorldPacket& recv_data)
     }
 }
 
-void WorldSession::HandleListInventoryOpcode(WorldPacket& recv_data)
+void WorldSession::HandleListInventoryOpcode(WorldPacket& recvData)
 {
     ObjectGuid guid;
 
-    recv_data >> guid;
+    guid[1] = recvData.ReadBit();
+    guid[0] = recvData.ReadBit();
+    guid[6] = recvData.ReadBit();
+    guid[3] = recvData.ReadBit();
+    guid[5] = recvData.ReadBit();
+    guid[4] = recvData.ReadBit();
+    guid[7] = recvData.ReadBit();
+    guid[2] = recvData.ReadBit();
 
+    recvData.ReadByteSeq(guid[0]);
+    recvData.ReadByteSeq(guid[5]);
+    recvData.ReadByteSeq(guid[6]);
+    recvData.ReadByteSeq(guid[7]);
+    recvData.ReadByteSeq(guid[1]);
+    recvData.ReadByteSeq(guid[3]);
+    recvData.ReadByteSeq(guid[4]);
+    recvData.ReadByteSeq(guid[2]);
     if (!GetPlayer()->IsAlive())
     {
         return;
@@ -577,6 +657,10 @@ void WorldSession::SendListInventory(ObjectGuid vendorguid)
         return;
     }
 
+    // remove fake death
+    if (GetPlayer()->hasUnitState(UNIT_STAT_DIED))
+        GetPlayer()->RemoveSpellsCausingAura(SPELL_AURA_FEIGN_DEATH);
+
     // Stop the npc if moving
     pCreature->StopMoving();
 
@@ -590,7 +674,7 @@ void WorldSession::SendListInventory(ObjectGuid vendorguid)
 
     float discountMod = _player->GetReputationPriceDiscount(pCreature);
 
-    uint16 count = 0;
+    uint8 count = 0;
     ByteBuffer buffer;
     for (uint8 vendorslot = 0; vendorslot < numitems; ++vendorslot)
     {
@@ -791,12 +875,29 @@ bool WorldSession::CheckBanker(ObjectGuid guid)
     return true;
 }
 
-void WorldSession::HandleBuyBankSlotOpcode(WorldPacket& recvPacket)
+void WorldSession::HandleBuyBankSlotOpcode(WorldPacket& recvData)
 {
     DEBUG_LOG("WORLD: CMSG_BUY_BANK_SLOT");
 
     ObjectGuid guid;
-    recvPacket >> guid;
+
+    guid[7] = recvData.ReadBit();
+    guid[2] = recvData.ReadBit();
+    guid[3] = recvData.ReadBit();
+    guid[1] = recvData.ReadBit();
+    guid[5] = recvData.ReadBit();
+    guid[4] = recvData.ReadBit();
+    guid[0] = recvData.ReadBit();
+    guid[6] = recvData.ReadBit();
+
+    recvData.ReadByteSeq(guid[7]);
+    recvData.ReadByteSeq(guid[0]);
+    recvData.ReadByteSeq(guid[3]);
+    recvData.ReadByteSeq(guid[1]);
+    recvData.ReadByteSeq(guid[6]);
+    recvData.ReadByteSeq(guid[2]);
+    recvData.ReadByteSeq(guid[4]);
+    recvData.ReadByteSeq(guid[5]);
 
     if (!CheckBanker(guid))
     {
@@ -925,13 +1026,13 @@ void WorldSession::HandleSetAmmoOpcode(WorldPacket& recv_data)
         GetPlayer()->SetAmmo(item);
 }
 
-void WorldSession::SendEnchantmentLog(ObjectGuid targetGuid, ObjectGuid casterGuid, uint32 itemId, uint32 enchantId)
+void WorldSession::SendEnchantmentLog(ObjectGuid targetGuid, ObjectGuid casterGuid, uint32 itemId, uint32 spellId)
 {
     WorldPacket data(SMSG_ENCHANTMENTLOG, (8 + 8 + 4 + 4 + 1)); // last check 2.0.10
     data << targetGuid.WriteAsPacked();
     data << casterGuid.WriteAsPacked();
     data << uint32(itemId);
-    data << uint32(enchantId);
+    data << uint32(spellId);
     SendPacket(&data);
 }
 
@@ -1267,7 +1368,7 @@ void WorldSession::HandleSocketOpcode(WorldPacket& recv_data)
         if (GemEnchants[i])
         {
             uint32 count = 1;
-            itemTarget->SetEnchantment(EnchantmentSlot(SOCK_ENCHANTMENT_SLOT + i), GemEnchants[i], 0, 0, _player->GetObjectGuid());
+            itemTarget->SetEnchantment(EnchantmentSlot(SOCK_ENCHANTMENT_SLOT + i), GemEnchants[i], 0, 0);
             if (Item* guidItem = gemGuids[i] ? _player->GetItemByGuid(gemGuids[i]) : NULL)
                 _player->DestroyItemCount(guidItem, count, true);
         }
@@ -1282,7 +1383,7 @@ void WorldSession::HandleSocketOpcode(WorldPacket& recv_data)
     if (SocketBonusActivated != SocketBonusToBeActivated)   // if there was a change...
     {
         _player->ApplyEnchantment(itemTarget, BONUS_ENCHANTMENT_SLOT, false);
-        itemTarget->SetEnchantment(BONUS_ENCHANTMENT_SLOT, (SocketBonusToBeActivated ? itemTarget->GetProto()->socketBonus : 0), 0, 0, _player->GetObjectGuid());
+        itemTarget->SetEnchantment(BONUS_ENCHANTMENT_SLOT, (SocketBonusToBeActivated ? itemTarget->GetProto()->socketBonus : 0), 0, 0);
         _player->ApplyEnchantment(itemTarget, BONUS_ENCHANTMENT_SLOT, true);
         // it is not displayed, client has an inbuilt system to determine if the bonus is activated
     }

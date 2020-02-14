@@ -99,10 +99,10 @@ SpellPowerEntry const* SpellEntry::GetSpellPower() const
     return SpellPowerId ? sSpellPowerStore.LookupEntry(SpellPowerId) : NULL;
 }
 
-SpellReagentsEntry const* SpellEntry::GetSpellReagents() const
-{
-    return SpellReagentsId ? sSpellReagentsStore.LookupEntry(SpellReagentsId) : NULL;
-}
+//SpellReagentsEntry const* SpellEntry::GetSpellReagents() const
+//{
+//    return SpellReagentsId ? sSpellReagentsStore.LookupEntry(SpellReagentsId) : NULL;
+//}
 
 SpellScalingEntry const* SpellEntry::GetSpellScaling() const
 {
