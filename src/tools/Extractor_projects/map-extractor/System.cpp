@@ -103,10 +103,12 @@ float CONF_float_to_int16_limit = 2048.0f;   // Max accuracy = val/65536
 float CONF_flat_height_delta_limit = 0.005f; // If max - min less this value - surface is flat
 float CONF_flat_liquid_delta_limit = 0.001f; // If max - min less this value - liquid surface is flat
 
-#define MIN_SUPPORTED_BUILD 15595                           // code expect mpq files and mpq content files structure for this build or later
-#define EXPANSION_COUNT 3
-#define WORLD_COUNT 2
+static char* const langs[] = {"enGB", "enUS", "deDE", "esES", "frFR", "koKR", "zhCN", "zhTW", "enCN", "enTW", "esMX", "ruRU", "itIT"};
+#define LANG_COUNT 13
 
+#define MIN_SUPPORTED_BUILD 18414                           // code expect mpq files and mpq content files structure for this build or later
+#define EXPANSION_COUNT 4
+#define WORLD_COUNT 1
 
 bool FileExists(const char* FileName)
 {
@@ -362,18 +364,30 @@ void ReadAreaTableDBC(int const locale)
 void ReadLiquidTypeTableDBC(int const locale)
 {
     HANDLE localeFile;
+    HANDLE localeFile2;
     char localMPQ[512];
-    sprintf(localMPQ, "%s/Data/%s/locale-%s.MPQ", input_path, Locales[locale], Locales[locale]);
+    char localMPQ2[512];
+    sprintf(localMPQ, "%s/Data/misc.MPQ", input_path);//, langs[locale], langs[locale]);
+    if (FileExists(localMPQ)==false)
+    {   // Use misc.mpq
+        sprintf(localMPQ, "%s/Data/%s/locale-%s.MPQ", input_path, langs[locale], langs[locale]);
+    }
+
     if (!SFileOpenArchive(localMPQ, 0, MPQ_OPEN_READ_ONLY, &localeFile))
+    {
         exit(1);
+    }
 
     printf("Read LiquidType.dbc file...");
 
     HANDLE dbcFile;
     if (!SFileOpenFileEx(localeFile, "DBFilesClient\\LiquidType.dbc", SFILE_OPEN_FROM_MPQ, &dbcFile))
     {
-        printf("Fatal error: Cannot find LiquidType.dbc in archive!\n");
-        exit(1);
+        if (!SFileOpenFileEx(localeFile2, "DBFilesClient\\LiquidType.dbc", SFILE_OPEN_FROM_MPQ, &dbcFile))
+        {
+            printf("Fatal error: Cannot find LiquidType.dbc in archive!\n");
+            exit(1);
+        }
     }
 
     DBCFile dbc(dbcFile);
@@ -402,7 +416,7 @@ void ReadLiquidTypeTableDBC(int const locale)
 
 // Map file format data
 static char const* MAP_MAGIC         = "MAPS";
-static char const* MAP_VERSION_MAGIC = "c1.4";
+static char const* MAP_VERSION_MAGIC = "p1.3";
 static char const* MAP_AREA_MAGIC    = "AREA";
 static char const* MAP_HEIGHT_MAGIC  = "MHGT";
 static char const* MAP_LIQUID_MAGIC  = "MLIQ";
@@ -1325,16 +1339,27 @@ void AppendPatchMPQFilesToList(char const* subdir, char const* suffix, char cons
 void LoadLocaleMPQFiles(int const locale)
 {
     char filename[512];
-
-    // first base old version of dbc files
-    sprintf(filename, "%s/Data/%s/locale-%s.MPQ", input_path, Locales[locale], Locales[locale]);
-
     HANDLE localeMpqHandle;
 
-    if (!OpenArchive(filename, &localeMpqHandle))
+    // first base old version of dbc files
+    sprintf(filename, "%s/Data/%s/locale-%s.MPQ", input_path, langs[locale], langs[locale]);
+    if (FileExists(filename)==true)
     {
-        printf("Error open archive: %s\n\n", filename);
-        return;
+        if (!OpenArchive(filename, &localeMpqHandle))
+        {
+            printf("Error open archive: %s\n\n", filename);
+            return;
+        }
+    }
+
+    sprintf(filename,"%s/Data/misc.MPQ", input_path);//, langs[locale], langs[locale]);
+    if (FileExists(filename)==true)
+    {
+        if (!OpenArchive(filename, &localeMpqHandle))
+        {
+            printf("Error open archive: %s\n\n", filename);
+            return;
+        }
     }
 
     // prepare sorted list patches in locale dir and Data root
@@ -1344,18 +1369,6 @@ void LoadLocaleMPQFiles(int const locale)
     // now update to newer view, root
     AppendPatchMPQFilesToList(NULL, NULL, Locales[locale], updates);
 
-    // ./Data wow-update-base files
-    for (int i = 0; Builds[i] && Builds[i] <= CONF_TargetBuild; ++i)
-    {
-        sprintf(filename, "%s/Data/wow-update-base-%u.MPQ", input_path, Builds[i]);
-
-        printf("\nPatching : %s\n", filename);
-
-        //if (!OpenArchive(filename))
-        if (!SFileOpenPatchArchive(localeMpqHandle, filename, "", 0))
-            printf("Error open patch archive: %s\n\n", filename);
-    }
-
     for (Updates::const_iterator itr = updates.begin(); itr != updates.end(); ++itr)
     {
         if (!itr->second.second)
@@ -1363,34 +1376,8 @@ void LoadLocaleMPQFiles(int const locale)
         else
             sprintf(filename, "%s/Data/%s", input_path, itr->second.first.c_str());
 
-        printf("\nPatching : %s\n", filename);
-
         //if (!OpenArchive(filename))
         if (!SFileOpenPatchArchive(localeMpqHandle, filename, itr->second.second ? itr->second.second : "", 0))
-            printf("Error open patch archive: %s\n\n", filename);
-    }
-
-    // ./Data/Cache patch-base files
-    for (int i = 0; Builds[i] && Builds[i] <= CONF_TargetBuild; ++i)
-    {
-        sprintf(filename, "%s/Data/Cache/patch-base-%u.MPQ", input_path, Builds[i]);
-
-        printf("\nPatching : %s\n", filename);
-
-        //if (!OpenArchive(filename))
-        if (!SFileOpenPatchArchive(localeMpqHandle, filename, "", 0))
-            printf("Error open patch archive: %s\n\n", filename);
-    }
-
-    // ./Data/Cache/<locale> patch files
-    for (int i = 0; Builds[i] && Builds[i] <= CONF_TargetBuild; ++i)
-    {
-        sprintf(filename, "%s/Data/Cache/%s/patch-%s-%u.MPQ", input_path, Locales[locale], Locales[locale], Builds[i]);
-
-        printf("\nPatching : %s\n", filename);
-
-        //if (!OpenArchive(filename))
-        if (!SFileOpenPatchArchive(localeMpqHandle, filename, "", 0))
             printf("Error open patch archive: %s\n\n", filename);
     }
 }
@@ -1403,7 +1390,7 @@ void LoadBaseMPQFiles()
     printf("Loaded MPQ files for map extraction:\n");
     for (int i = 1; i <= WORLD_COUNT; i++)
     {
-        sprintf(filename, "%s/Data/world%s.MPQ", input_path, (i == 2 ? "2" : ""));
+        sprintf(filename, "%s/Data/World%s.MPQ", input_path, (i == 2 ? "2" : ""));
         printf("%s\n", filename);
 
         if (!OpenArchive(filename, &worldMpqHandle))
@@ -1415,9 +1402,21 @@ void LoadBaseMPQFiles()
 
     for (int i = 1; i <= EXPANSION_COUNT; i++)
     {
-        sprintf(filename, "%s/Data/expansion%i.MPQ", input_path, i);
+        sprintf(filename, "%s/Data/Expansion%i.MPQ", input_path, i);
         printf("%s\n", filename);
 
+        if (!OpenArchive(filename, &worldMpqHandle))
+        {
+            printf("Error open archive: %s\n\n", filename);
+            return;
+        }
+    }
+
+    // Add Misc.MPQ
+    sprintf(filename, "%s/Data/misc.MPQ", input_path);//, (i == 2 ? "2" : ""));
+    if (FileExists(filename)==true)
+    {
+        printf("%s\n", filename);
         if (!OpenArchive(filename, &worldMpqHandle))
         {
             printf("Error open archive: %s\n\n", filename);
@@ -1444,18 +1443,6 @@ void LoadBaseMPQFiles()
             printf("Error open patch archive: %s\n\n", filename);
             return;
         }
-    }
-
-    // ./Data/Cache patch-base files
-    for (int i = 0; Builds[i] && Builds[i] <= CONF_TargetBuild; ++i)
-    {
-        sprintf(filename, "%s/Data/Cache/patch-base-%u.MPQ", input_path, Builds[i]);
-
-        printf("\nPatching : %s\n", filename);
-
-        //if (!OpenArchive(filename))
-        if (!SFileOpenPatchArchive(worldMpqHandle, filename, "", 0))
-            printf("Error open patch archive: %s\n\n", filename);
     }
 }
 
@@ -1484,6 +1471,10 @@ int main(int argc, char* arg[])
             {
                 FirstLocale = i;
                 build = ReadBuild(FirstLocale);
+                if (build==17520)
+                {
+                    build = 18273;
+                }
                 printf("Detected client build: %u\n", build);
                 break;
             }
@@ -1493,6 +1484,10 @@ int main(int argc, char* arg[])
             {
                 FirstLocale = i;
                 build = ReadBuild(FirstLocale);
+                if (build==17520)
+                {
+                    build = 18273;
+                }
                 printf("Detected client build: %u\n", build);
                 ExtractDBCFiles(i, true);
             }
@@ -1516,7 +1511,7 @@ int main(int argc, char* arg[])
 
         // Open MPQs
         LoadBaseMPQFiles();
-     //   LoadLocaleMPQFiles(FirstLocale);
+        LoadLocaleMPQFiles(FirstLocale);
 
         // Extract maps
         ExtractMapsFromMpq(build, FirstLocale);

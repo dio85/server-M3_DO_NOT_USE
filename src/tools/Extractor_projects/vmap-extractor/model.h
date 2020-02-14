@@ -33,12 +33,22 @@
 class WMOInstance;
 class MPQFile;
 
+/**
+ * @brief
+ *
+ * @param v
+ * @return Vec3D
+ */
 Vec3D fixCoordSystem(Vec3D v);
 
+/**
+ * @brief
+ *
+ */
 class Model
 {
     public:
-        ModelHeader header;
+        ModelHeader header; /**< TODO */
         uint32 offsBB_vertices, offsBB_indices;
         Vec3D* BB_vertices, *vertices;
         uint16* BB_indices, *indices;
@@ -86,7 +96,7 @@ class Model
             indices = NULL;
         }
         std::string filename; /**< TODO */
-        char outfilename;
+        char outfilename; /**< TODO */
 };
 
 /**
