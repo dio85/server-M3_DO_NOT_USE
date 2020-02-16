@@ -6894,6 +6894,11 @@ void ObjectMgr::LoadGameobjectInfo()
     sLog.outString();
 }
 
+void ObjectMgr::AddGameobjectInfo(GameObjectInfo * goinfo)
+{
+	//TODO??
+}
+
 void ObjectMgr::LoadExplorationBaseXP()
 {
     uint32 count = 0;
@@ -8723,7 +8728,7 @@ bool PlayerCondition::Meets(Player const* player, Map const* map, WorldObject co
         {
             Unit::SpellAuraHolderMap const& auras = player->GetSpellAuraHolderMap();
             for (Unit::SpellAuraHolderMap::const_iterator itr = auras.begin(); itr != auras.end(); ++itr)
-                if ((itr->second->GetSpellProto()->HasAttribute(SPELL_ATTR_CASTABLE_WHILE_MOUNTED) || itr->second->GetSpellProto()->HasAttribute(SPELL_ATTR_UNK4)) && itr->second->GetSpellProto()->SpellVisual[0] == 3580)
+                if ((itr->second->GetSpellProto()->HasAttribute(SPELL_ATTR_CASTABLE_WHILE_MOUNTED) || itr->second->GetSpellProto()->HasAttribute(SPELL_ATTR_ABILITY)) && itr->second->GetSpellProto()->SpellVisual[0] == 3580)
                 {
                     return true;
                 }
@@ -11204,4 +11209,14 @@ void ObjectMgr::LoadHotfixData()
 
     sLog.outString();
     sLog.outString(">> Loaded %u hotfix info entries.", count);
+}
+
+void ObjectMgr::LoadPhaseDefinitions()
+{
+	//TODO??
+}
+
+void ObjectMgr::LoadSpellPhaseInfo()
+{
+	//TODO??
 }

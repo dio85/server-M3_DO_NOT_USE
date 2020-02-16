@@ -617,23 +617,7 @@ class ObjectMgr
 
         void GetPlayerClassLevelInfo(uint32 class_, uint32 level, uint32& baseHP, uint32& baseMana) const;
 
-        PlayerInfo const* GetPlayerInfo(uint32 race, uint32 class_) const
-        {
-            if (race   >= MAX_RACES)
-            {
-                return NULL;
-            }
-            if (class_ >= MAX_CLASSES)
-            {
-                return NULL;
-            }
-            PlayerInfo const* info = &playerInfo[race][class_];
-            if (info->displayId_m == 0 || info->displayId_f == 0)
-            {
-                return NULL;
-            }
-            return info;
-        }
+   
         void GetPlayerLevelInfo(uint32 race, uint32 class_, uint32 level, PlayerLevelInfo* info) const;
 
         ObjectGuid GetPlayerGuidByName(std::string name) const;
@@ -1264,7 +1248,7 @@ class ObjectMgr
             return &iter->second;
         }
 
-        void AddVendorItem(uint32 entry, uint32 item, uint32 maxcount, uint32 incrtime, uint32 extendedcost);
+
         void AddVendorItem(uint32 entry, uint32 item, uint8 type, uint32 maxcount, uint32 incrtime, uint32 ExtendedCost);
         bool RemoveVendorItem(uint32 entry, uint32 item, uint8 type);
         bool IsVendorItemValid(bool isTemplate, char const* tableName, uint32 vendor_entry, uint32 item, uint8 type, uint32 maxcount, uint32 ptime, uint32 ExtendedCost, uint16 conditionId, Player* pl = NULL, std::set<uint32>* skip_vendors = NULL) const;
@@ -1485,7 +1469,7 @@ class ObjectMgr
         PetLevelInfoMap petInfo;                            // [creature_id][level]
 
         void BuildPlayerLevelInfo(uint8 race, uint8 class_, uint8 level, PlayerLevelInfo* plinfo) const;
-        PlayerInfo playerInfo[MAX_RACES][MAX_CLASSES];
+		PlayerInfo playerInfo[MAX_CLASSES][MAX_RACES];
 
         typedef std::vector<uint32> PlayerXPperLevel;       // [level]
         PlayerXPperLevel mPlayerXPperLevel;
