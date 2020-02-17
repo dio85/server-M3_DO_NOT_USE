@@ -9399,16 +9399,7 @@ void Player::SendInitWorldStates(uint32 zoneid, uint32 areaid)
             else
                 FillInitialWorldState(data, count, EP_world_states);
             break;
-        case 1377:                                          // Silithus
-        case 3483:                                          // Hellfire Peninsula
-        case 3518:                                          // Nagrand
-        case 3519:                                          // Terokkar Forest
-        case 3521:                                          // Zangarmarsh
-            if (OutdoorPvP* outdoorPvP = sOutdoorPvPMgr.GetScript(zoneid))
-                outdoorPvP->FillInitialWorldStates(data, count);
-            else
-                FillInitialWorldState(data, count, SI_world_states);
-            break;
+       // Battlegounds
         case 2597:                                          // AV
             if (bg && bg->GetTypeID() == BATTLEGROUND_AV)
                 bg->FillInitialWorldStates(data, count);
@@ -9433,6 +9424,7 @@ void Player::SendInitWorldStates(uint32 zoneid, uint32 areaid)
             else
                 FillInitialWorldState(data, count, EY_world_states);
             break;
+		// Zones
         case 3483:                                          // Hellfire Peninsula
             if (OutdoorPvP* outdoorPvP = sOutdoorPvPMgr.GetScript(zoneid))
                 outdoorPvP->FillInitialWorldStates(data, count);
@@ -9457,6 +9449,12 @@ void Player::SendInitWorldStates(uint32 zoneid, uint32 areaid)
             else
                 FillInitialWorldState(data, count, ZM_world_states);
             break;
+		case 1377:                                          // Silithus
+			if (OutdoorPvP* outdoorPvP = sOutdoorPvPMgr.GetScript(zoneid))
+				outdoorPvP->FillInitialWorldStates(data, count);
+			else
+				FillInitialWorldState(data, count, SI_world_states);
+			break;
         case 3698:                                          // Nagrand Arena
             if (bg && bg->GetTypeID() == BATTLEGROUND_NA)
                 bg->FillInitialWorldStates(data, count);

@@ -452,7 +452,7 @@ enum ConditionType
     CONDITION_GENDER                = 35,                   // 0=male, 1=female, 2=none (see enum Gender)
     CONDITION_DEAD_OR_AWAY          = 36,                   // value1: 0=player dead, 1=player is dead (with group dead), 2=player in instance are dead, 3=creature is dead
                                                             // value2: if != 0 only consider players in range of this value
-    CONDITION_CREATURE_IN_RANGE     = 37,                   // value1: creature entry; value2: range; returns only alive creatures
+    CONDITION_CREATURE_IN_RANGE     = 37                   // value1: creature entry; value2: range; returns only alive creatures
 };
 
 enum ConditionSource                                        // From where was the condition called?
@@ -467,7 +467,7 @@ enum ConditionSource                                        // From where was th
     CONDITION_FROM_SPELL_AREA       = 7,                    // Used to check a condition from spell_area table
     CONDITION_FROM_SPELLCLICK       = 8,                    // Used to check a condition from npc_spellclick_spells table
     CONDITION_FROM_DBSCRIPTS        = 9,                    // Used to check a condition from DB Scripts Engine
-    CONDITION_FROM_PHASEMGR         = 10,                   // Used to check a condition from phase manager
+    CONDITION_FROM_PHASEMGR         = 10                   // Used to check a condition from phase manager
 };
 
 class PlayerCondition
@@ -621,6 +621,7 @@ class ObjectMgr
         void GetPlayerLevelInfo(uint32 race, uint32 class_, uint32 level, PlayerLevelInfo* info) const;
 
         ObjectGuid GetPlayerGuidByName(std::string name) const;
+		uint32 GetPlayerInfo(uint32 race, uint32 class_) const;
         bool GetPlayerNameByGUID(ObjectGuid guid, std::string& name) const;
         Team GetPlayerTeamByGUID(ObjectGuid guid) const;
         uint32 GetPlayerAccountIdByGUID(ObjectGuid guid) const;
@@ -1469,7 +1470,8 @@ class ObjectMgr
         PetLevelInfoMap petInfo;                            // [creature_id][level]
 
         void BuildPlayerLevelInfo(uint8 race, uint8 class_, uint8 level, PlayerLevelInfo* plinfo) const;
-		PlayerInfo playerInfo[MAX_CLASSES][MAX_RACES];
+	
+		PlayerInfo playerInfo[MAX_RACES][MAX_CLASSES];
 
         typedef std::vector<uint32> PlayerXPperLevel;       // [level]
         PlayerXPperLevel mPlayerXPperLevel;

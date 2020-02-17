@@ -212,6 +212,7 @@ void InitializeOpcodes()
     //OPCODE(CMSG_MESSAGECHAT_ADDON_RAID,                  STATUS_LOGGEDIN, PROCESS_THREADUNSAFE, &WorldSession::HandleAddonMessagechatOpcode    );
     //OPCODE(CMSG_MESSAGECHAT_ADDON_WHISPER,               STATUS_LOGGEDIN, PROCESS_THREADUNSAFE, &WorldSession::HandleAddonMessagechatOpcode    );
     //OPCODE(CMSG_MESSAGECHAT_AFK,                         STATUS_LOGGEDIN, PROCESS_THREADUNSAFE, &WorldSession::HandleMessagechatOpcode         );
+	OPCODE(CMSG_MESSAGECHAT_BATTLEGROUND,					STATUS_LOGGEDIN, PROCESS_THREADUNSAFE, &WorldSession::HandleMessagechatOpcode	     );
     //OPCODE(CMSG_MESSAGECHAT_INSTANCE,                    STATUS_LOGGEDIN, PROCESS_THREADUNSAFE, &WorldSession::HandleMessagechatOpcode         );
     //OPCODE(CMSG_MESSAGECHAT_CHANNEL,                     STATUS_LOGGEDIN, PROCESS_THREADUNSAFE, &WorldSession::HandleMessagechatOpcode         );
     //OPCODE(CMSG_MESSAGECHAT_DND,                         STATUS_LOGGEDIN, PROCESS_THREADUNSAFE, &WorldSession::HandleMessagechatOpcode         );

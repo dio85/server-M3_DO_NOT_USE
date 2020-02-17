@@ -6439,7 +6439,7 @@ void Aura::HandleModTotalPercentStat(bool apply, bool /*Real*/)
     }
 
     // recalculate current HP/MP after applying aura modifications (only for spells with 0x10 flag)
-    if ((miscValueB & (1 << STAT_STAMINA)) && maxHPValue > 0 && GetSpellProto()->HasAttribute(SPELL_ATTR_UNK4))
+    if ((miscValueB & (1 << STAT_STAMINA)) && maxHPValue > 0 && GetSpellProto()->HasAttribute(SPELL_ATTR_ABILITY))
     {
         uint32 newHPValue = uint32(float(target->GetMaxHealth()) / maxHPValue * curHPValue);
         target->SetHealth(newHPValue);
@@ -7299,7 +7299,7 @@ void Aura::HandleShapeshiftBoosts(bool apply)
         case FORM_TEST_OF_STRENGTH:
         case FORM_BLB_PLAYER:
         case FORM_SHADOW_DANCE:
-        case FORM_TEST:
+        //case FORM_TEST:
         case FORM_ZOMBIE:
         case FORM_UNDEAD:
         case FORM_FRENZY:

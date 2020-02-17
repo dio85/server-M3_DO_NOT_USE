@@ -348,7 +348,7 @@ void PhaseUpdateData::AddQuestUpdate(uint32 const questId)
 {
     AddConditionType(CONDITION_QUESTREWARDED);
     AddConditionType(CONDITION_QUESTTAKEN);
-    AddConditionType(CONDITION_QUEST_NONE);
+    AddConditionType(CONDITION_QUEST_NONE);	// TODO CONDITION_QUEST_COMPLETED
 
     _questId = questId;
 }

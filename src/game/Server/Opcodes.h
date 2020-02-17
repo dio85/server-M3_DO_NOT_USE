@@ -422,6 +422,7 @@ enum Opcodes
     CMSG_MAIL_TAKE_ITEM                                   = 0x2B06, // 4.3.4 15595
     CMSG_MAIL_TAKE_MONEY                                  = 0x4034, // 4.3.4 15595
     CMSG_MAKEMONSTERATTACKGUID                            = 0x1017,
+	CMSG_MESSAGECHAT_ADDON_BATTLEGROUND					  = 0x0000,
     CMSG_MESSAGECHAT_ADDON_GUILD                          = 0x0544, // 4.3.4 15595
     CMSG_MESSAGECHAT_ADDON_INSTANCE                       = 0x05D3, // 5.1.0 16357
     CMSG_MESSAGECHAT_ADDON_OFFICER                        = 0x3954, // 4.3.4 15595
@@ -429,6 +430,7 @@ enum Opcodes
     CMSG_MESSAGECHAT_ADDON_RAID                           = 0x1D56, // 4.3.4 15595
     CMSG_MESSAGECHAT_ADDON_WHISPER                        = 0x2146, // 4.3.4 15595
     CMSG_MESSAGECHAT_AFK                                  = 0x0267, // 5.1.0 16357
+	CMSG_MESSAGECHAT_BATTLEGROUND						  = 0x0000,
     CMSG_MESSAGECHAT_CHANNEL                              = 0x067E, // 5.1.0 16357
     CMSG_MESSAGECHAT_DND                                  = 0x0FFB, // 5.1.0 16357
     CMSG_MESSAGECHAT_EMOTE                                = 0x02CE, // 5.1.0 16357
